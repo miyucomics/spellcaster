@@ -94,11 +94,38 @@ fn traverse(
     }
 }
 
-fn get_location(label: &str) -> i8 {
-    println!("{}", label);
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-    input.trim().parse().unwrap_or(-1)
+fn solve_board(
+    board: String,
+    dl: i8,
+    tl: i8,
+    dw: i8,
+    swaps: u8,
+    trie: &Trie,
+    neighbors_cache: &Vec<Vec<i8>>,
+) {
+    let mut context = TraverseContext {
+        board: &mut board.chars().map(Some).collect(),
+        solutions: &mut Vec::new(),
+        word_accumulator: &mut String::new(),
+        breadcrumb_accumulator: &mut Vec::new(),
+    };
+
+    for pos in 0..25 {
+        traverse(&trie.root, pos, swaps, &mut context, &neighbors_cache);
+    }
+
+    let mut seen = HashSet::new();
+    context.solutions.retain(|s| seen.insert(s.word.clone()));
+
+    context
+        .solutions
+        .sort_by_key(|s| -score_solution(s, dl, tl, dw));
+
+    for solution in context.solutions.iter().take(5) {
+        let score = score_solution(solution, dl, tl, dw);
+        println!("{:<10} {:?} {}", solution.word, solution.breadcrumbs, score);
+    }
+    println!();
 }
 
 fn main() {
@@ -131,60 +158,33 @@ fn main() {
         })
         .collect();
 
-    loop {
-        let mut board_input = String::new();
-        println!("Board:");
-        std::io::stdin()
-            .read_line(&mut board_input)
-            .expect("Failed to read line");
-        let board_input = board_input.trim().to_lowercase();
+    solve_board(
+        String::from("tssoknodovampenstxegzwtyi"),
+        14,
+        -1,
+        -1,
+        0,
+        &trie,
+        &neighbor_cache,
+    );
 
-        if board_input.len() != 25 {
-            println!("Board must be exactly 25 letters.");
-            continue;
-        }
+    solve_board(
+        String::from("tssoknodovampenstxegzwtyi"),
+        14,
+        -1,
+        -1,
+        1,
+        &trie,
+        &neighbor_cache,
+    );
 
-        let dl = get_location("Double letter location:");
-        let tl = get_location("Triple letter location:");
-        let dw = get_location("Double word location:");
-
-        println!("Swaps allowed:");
-        let allowed_errors: u8 = {
-            let mut input = String::new();
-            std::io::stdin()
-                .read_line(&mut input)
-                .expect("Failed to read line");
-            input.trim().parse().unwrap_or(0)
-        };
-
-        let mut context = TraverseContext {
-            board: &mut board_input.chars().map(Some).collect(),
-            solutions: &mut Vec::new(),
-            word_accumulator: &mut String::new(),
-            breadcrumb_accumulator: &mut Vec::new(),
-        };
-
-        for pos in 0..25 {
-            traverse(
-                &trie.root,
-                pos,
-                allowed_errors,
-                &mut context,
-                &neighbor_cache,
-            );
-        }
-
-        let mut seen = HashSet::new();
-        context.solutions.retain(|s| seen.insert(s.word.clone()));
-
-        context
-            .solutions
-            .sort_by_key(|s| -score_solution(s, dl, tl, dw));
-
-        for solution in context.solutions.iter().take(10) {
-            let score = score_solution(solution, dl, tl, dw);
-            println!("{:<10} {:?} {}", solution.word, solution.breadcrumbs, score);
-        }
-        println!();
-    }
+    solve_board(
+        String::from("tssoknodovampenstxegzwtyi"),
+        14,
+        -1,
+        -1,
+        2,
+        &trie,
+        &neighbor_cache,
+    );
 }

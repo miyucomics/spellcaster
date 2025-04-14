@@ -1,5 +1,5 @@
 mod trie;
-use std::collections::HashSet;
+use std::{cmp::Reverse, collections::HashSet};
 use trie::{Trie, TrieNode};
 
 struct Solution {
@@ -24,10 +24,10 @@ fn score_solution(
     double_letter_tile: Option<u8>,
     triple_letter_tile: Option<u8>,
     double_word_tile: Option<u8>,
-) -> i32 {
-    let mut score: i32 = 0;
+) -> u32 {
+    let mut score: u32 = 0;
 
-    for (ch, &pos) in solution.word.clone().into_iter().zip(&solution.breadcrumbs) {
+    for (&ch, &pos) in solution.word.iter().zip(&solution.breadcrumbs) {
         let mut multiplier = 1;
 
         if Some(pos) == double_letter_tile {
@@ -36,7 +36,7 @@ fn score_solution(
             multiplier = 3;
         }
 
-        score += LETTER_VALUES[ch as usize] as i32 * multiplier;
+        score += LETTER_VALUES[ch as usize] as u32 * multiplier;
     }
 
     if let Some(dw) = double_word_tile {
@@ -80,7 +80,7 @@ fn traverse(
 
             context.bitmask |= 1 << pos;
             for neighbor in neighbors_cache.get(pos as usize).unwrap() {
-                if (context.bitmask >> neighbor) & 1 == 0 {
+                if context.bitmask & (1 << neighbor) == 0 {
                     traverse(
                         child_node,
                         *neighbor,
@@ -108,11 +108,11 @@ fn solve_board(
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let mut context = TraverseContext {
-        board: board,
+        board,
         bitmask: 0,
         solutions: &mut Vec::new(),
-        word_accumulator: &mut Vec::new(),
-        breadcrumb_accumulator: &mut Vec::new(),
+        word_accumulator: &mut Vec::with_capacity(25),
+        breadcrumb_accumulator: &mut Vec::with_capacity(25),
     };
 
     for pos in 0..25 {
@@ -124,7 +124,7 @@ fn solve_board(
 
     context
         .solutions
-        .sort_by_key(|s| -score_solution(s, dl, tl, dw));
+        .sort_by_key(|s| Reverse(score_solution(s, dl, tl, dw)));
 
     for solution in context.solutions.iter().take(5) {
         let score = score_solution(solution, dl, tl, dw);

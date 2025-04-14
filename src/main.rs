@@ -1,6 +1,5 @@
 mod trie;
 use std::collections::HashSet;
-
 use trie::{Trie, TrieNode};
 
 struct Solution {
@@ -60,8 +59,6 @@ fn traverse(
     context: &mut TraverseContext,
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
-    // this should never be None because we test before traversing onto this tile
-    // and the only other time traverse is called is to begin a search on a given tile, where all tiles should be unused
     let current_letter = context.board[pos as usize];
 
     for (&ch, child_node) in &node.children {
@@ -100,7 +97,7 @@ fn traverse(
 }
 
 fn solve_board(
-    board: String,
+    board: &String,
     dl: Option<u8>,
     tl: Option<u8>,
     dw: Option<u8>,
@@ -164,33 +161,8 @@ fn main() {
         })
         .collect();
 
-    solve_board(
-        String::from("tssoknodovampenstxegzwtyi"),
-        Some(14),
-        None,
-        None,
-        0,
-        &trie,
-        &neighbor_cache,
-    );
-
-    solve_board(
-        String::from("tssoknodovampenstxegzwtyi"),
-        Some(14),
-        None,
-        None,
-        1,
-        &trie,
-        &neighbor_cache,
-    );
-
-    solve_board(
-        String::from("tssoknodovampenstxegzwtyi"),
-        Some(14),
-        None,
-        None,
-        2,
-        &trie,
-        &neighbor_cache,
-    );
+    let board = String::from("tssoknodovampenstxegzwtyi");
+    solve_board(&board, Some(14), None, None, 0, &trie, &neighbor_cache);
+    solve_board(&board, Some(14), None, None, 1, &trie, &neighbor_cache);
+    solve_board(&board, Some(14), None, None, 2, &trie, &neighbor_cache);
 }

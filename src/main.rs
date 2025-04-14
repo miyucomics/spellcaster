@@ -8,7 +8,7 @@ struct Solution {
 }
 
 struct TraverseContext<'a> {
-    board: &'a Vec<char>,
+    board: &'a Vec<u8>,
     bitmask: u32,
     solutions: &'a mut Vec<Solution>,
     word_accumulator: &'a mut String,
@@ -61,13 +61,13 @@ fn traverse(
 ) {
     let current_letter = context.board[pos as usize];
 
-    for (&ch, child_node) in &node.children {
-        let cost = if current_letter == ch { 0 } else { 1 };
+    for (&path, child_node) in &node.children {
+        let cost = if current_letter == path { 0 } else { 1 };
         if remaining_errors < cost {
             continue;
         }
 
-        context.word_accumulator.push(ch);
+        context.word_accumulator.push(path as char);
         context.breadcrumb_accumulator.push(pos);
 
         if child_node.is_terminal {
@@ -106,7 +106,7 @@ fn solve_board(
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let mut context = TraverseContext {
-        board: &mut board.chars().collect(),
+        board: &mut board.as_bytes().to_vec(),
         bitmask: 0,
         solutions: &mut Vec::new(),
         word_accumulator: &mut String::new(),

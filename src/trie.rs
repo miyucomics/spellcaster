@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 pub struct TrieNode {
-    pub children: HashMap<char, TrieNode>,
+    pub children: HashMap<u8, TrieNode>,
     pub is_terminal: bool,
 }
 
@@ -27,8 +27,8 @@ impl Trie {
 
     pub fn insert(&mut self, word: &str) {
         let mut node = &mut self.root;
-        for ch in word.chars() {
-            node = node.children.entry(ch).or_insert_with(TrieNode::new);
+        for &byte in word.as_bytes() {
+            node = node.children.entry(byte).or_insert_with(TrieNode::new);
         }
         node.is_terminal = true;
     }

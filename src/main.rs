@@ -5,7 +5,7 @@ use trie::{Trie, TrieNode};
 
 struct Solution {
     word: String,
-    breadcrumbs: Vec<i8>,
+    breadcrumbs: Vec<u8>,
 }
 
 struct TraverseContext<'a> {
@@ -13,7 +13,7 @@ struct TraverseContext<'a> {
     bitmask: u32,
     solutions: &'a mut Vec<Solution>,
     word_accumulator: &'a mut String,
-    breadcrumb_accumulator: &'a mut Vec<i8>,
+    breadcrumb_accumulator: &'a mut Vec<u8>,
 }
 
 static LETTER_VALUES: [i8; 26] = [
@@ -22,24 +22,28 @@ static LETTER_VALUES: [i8; 26] = [
 
 fn score_solution(
     solution: &Solution,
-    double_letter_tile: i8,
-    triple_letter_tile: i8,
-    double_word_tile: i8,
+    double_letter_tile: Option<u8>,
+    triple_letter_tile: Option<u8>,
+    double_word_tile: Option<u8>,
 ) -> i32 {
     let mut score: i32 = 0;
 
     for (ch, &pos) in solution.word.chars().zip(&solution.breadcrumbs) {
         let mut multiplier = 1;
-        if pos == double_letter_tile {
+
+        if Some(pos) == double_letter_tile {
             multiplier = 2;
-        } else if pos == triple_letter_tile {
+        } else if Some(pos) == triple_letter_tile {
             multiplier = 3;
         }
+
         score += LETTER_VALUES[ch as usize - 'a' as usize] as i32 * multiplier;
     }
 
-    if solution.breadcrumbs.contains(&double_word_tile) {
-        score *= 2;
+    if let Some(dw) = double_word_tile {
+        if solution.breadcrumbs.iter().any(|&p| p as u8 == dw) {
+            score *= 2;
+        }
     }
 
     if solution.word.len() >= 6 {
@@ -51,10 +55,10 @@ fn score_solution(
 
 fn traverse(
     node: &TrieNode,
-    pos: i8,
+    pos: u8,
     remaining_errors: u8,
     context: &mut TraverseContext,
-    neighbors_cache: &Vec<Vec<i8>>,
+    neighbors_cache: &Vec<Vec<u8>>,
 ) {
     // this should never be None because we test before traversing onto this tile
     // and the only other time traverse is called is to begin a search on a given tile, where all tiles should be unused
@@ -97,12 +101,12 @@ fn traverse(
 
 fn solve_board(
     board: String,
-    dl: i8,
-    tl: i8,
-    dw: i8,
+    dl: Option<u8>,
+    tl: Option<u8>,
+    dw: Option<u8>,
     swaps: u8,
     trie: &Trie,
-    neighbors_cache: &Vec<Vec<i8>>,
+    neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let mut context = TraverseContext {
         board: &mut board.chars().collect(),
@@ -139,7 +143,7 @@ fn main() {
 
     // this is a surprisingly expensive calculation because of the double loop, conditional, and bounds
     // we'll precompute it just once
-    let neighbor_cache: Vec<Vec<i8>> = (0..25)
+    let neighbor_cache: Vec<Vec<u8>> = (0..25)
         .map(|pos| {
             let x = pos % 5;
             let y = pos / 5;
@@ -149,10 +153,10 @@ fn main() {
                     if dx == 0 && dy == 0 {
                         continue;
                     }
-                    let nx = x + dx;
-                    let ny = y + dy;
+                    let nx: i8 = x + dx;
+                    let ny: i8 = y + dy;
                     if (0..5).contains(&nx) && (0..5).contains(&ny) {
-                        neighbors.push(ny * 5 + nx);
+                        neighbors.push((ny * 5 + nx) as u8);
                     }
                 }
             }
@@ -162,9 +166,9 @@ fn main() {
 
     solve_board(
         String::from("tssoknodovampenstxegzwtyi"),
-        14,
-        -1,
-        -1,
+        Some(14),
+        None,
+        None,
         0,
         &trie,
         &neighbor_cache,
@@ -172,9 +176,9 @@ fn main() {
 
     solve_board(
         String::from("tssoknodovampenstxegzwtyi"),
-        14,
-        -1,
-        -1,
+        Some(14),
+        None,
+        None,
         1,
         &trie,
         &neighbor_cache,
@@ -182,9 +186,9 @@ fn main() {
 
     solve_board(
         String::from("tssoknodovampenstxegzwtyi"),
-        14,
-        -1,
-        -1,
+        Some(14),
+        None,
+        None,
         2,
         &trie,
         &neighbor_cache,

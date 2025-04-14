@@ -147,7 +147,7 @@ fn main() {
         let tl = get_location("Triple letter location:");
         let dw = get_location("Double word location:");
 
-        println!("Substituitions allowed:");
+        println!("Swaps allowed:");
         let allowed_errors: u8 = {
             let mut input = String::new();
             std::io::stdin()

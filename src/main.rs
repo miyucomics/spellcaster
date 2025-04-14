@@ -55,10 +55,9 @@ fn traverse(
     context: &mut TraverseContext,
     neighbors_cache: &Vec<Vec<i8>>,
 ) {
-    let current_letter = match context.board[pos as usize] {
-        Some(c) => c,
-        None => return,
-    };
+    // this should never be None because we test before traversing onto this tile
+    // and the only other time traverse is called is to begin a search on a given tile, where all tiles should be unused
+    let current_letter = context.board[pos as usize].unwrap();
 
     for (&ch, child_node) in &node.children {
         let cost = if current_letter == ch { 0 } else { 1 };

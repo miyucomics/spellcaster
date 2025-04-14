@@ -9,7 +9,8 @@ struct Solution {
 }
 
 struct TraverseContext<'a> {
-    board: &'a mut Vec<Option<char>>,
+    board: &'a Vec<char>,
+    bitmask: u32,
     solutions: &'a mut Vec<Solution>,
     word_accumulator: &'a mut String,
     breadcrumb_accumulator: &'a mut Vec<i8>,
@@ -57,7 +58,7 @@ fn traverse(
 ) {
     // this should never be None because we test before traversing onto this tile
     // and the only other time traverse is called is to begin a search on a given tile, where all tiles should be unused
-    let current_letter = context.board[pos as usize].unwrap();
+    let current_letter = context.board[pos as usize];
 
     for (&ch, child_node) in &node.children {
         let cost = if current_letter == ch { 0 } else { 1 };
@@ -75,9 +76,9 @@ fn traverse(
             });
         }
 
-        context.board[pos as usize] = None;
+        context.bitmask |= 1 << pos;
         for neighbor in neighbors_cache.get(pos as usize).unwrap() {
-            if context.board[*neighbor as usize].is_some() {
+            if (context.bitmask >> neighbor) & 1 == 0 {
                 traverse(
                     child_node,
                     *neighbor,
@@ -87,7 +88,7 @@ fn traverse(
                 );
             }
         }
-        context.board[pos as usize] = Some(current_letter);
+        context.bitmask &= !(1 << pos);
 
         context.word_accumulator.pop();
         context.breadcrumb_accumulator.pop();
@@ -104,7 +105,8 @@ fn solve_board(
     neighbors_cache: &Vec<Vec<i8>>,
 ) {
     let mut context = TraverseContext {
-        board: &mut board.chars().map(Some).collect(),
+        board: &mut board.chars().collect(),
+        bitmask: 0,
         solutions: &mut Vec::new(),
         word_accumulator: &mut String::new(),
         breadcrumb_accumulator: &mut Vec::new(),

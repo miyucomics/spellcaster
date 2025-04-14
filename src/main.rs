@@ -1,4 +1,6 @@
 mod trie;
+use std::collections::HashSet;
+
 use trie::{Trie, TrieNode};
 
 struct Solution {
@@ -172,6 +174,9 @@ fn main() {
                 &neighbor_cache,
             );
         }
+
+        let mut seen = HashSet::new();
+        context.solutions.retain(|s| seen.insert(s.word.clone()));
 
         context
             .solutions

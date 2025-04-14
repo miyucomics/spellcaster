@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
 pub struct TrieNode {
-    pub children: HashMap<u8, TrieNode>,
+    pub children: [Option<Box<TrieNode>>; 26],
     pub is_terminal: bool,
 }
 
 impl TrieNode {
     fn new() -> Self {
         Self {
-            children: HashMap::new(),
+            children: Default::default(),
             is_terminal: false,
         }
     }
@@ -28,7 +26,8 @@ impl Trie {
     pub fn insert(&mut self, word: &str) {
         let mut node = &mut self.root;
         for &byte in word.as_bytes() {
-            node = node.children.entry(byte).or_insert_with(TrieNode::new);
+            let idx = (byte - b'a') as usize;
+            node = node.children[idx].get_or_insert_with(|| Box::new(TrieNode::new()));
         }
         node.is_terminal = true;
     }

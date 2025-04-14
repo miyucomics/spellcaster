@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use trie::{Trie, TrieNode};
 
 struct Solution {
-    word: String,
+    word: Vec<u8>,
     breadcrumbs: Vec<u8>,
 }
 
@@ -11,7 +11,7 @@ struct TraverseContext<'a> {
     board: &'a Vec<u8>,
     bitmask: u32,
     solutions: &'a mut Vec<Solution>,
-    word_accumulator: &'a mut String,
+    word_accumulator: &'a mut Vec<u8>,
     breadcrumb_accumulator: &'a mut Vec<u8>,
 }
 
@@ -27,7 +27,7 @@ fn score_solution(
 ) -> i32 {
     let mut score: i32 = 0;
 
-    for (ch, &pos) in solution.word.chars().zip(&solution.breadcrumbs) {
+    for (ch, &pos) in solution.word.clone().into_iter().zip(&solution.breadcrumbs) {
         let mut multiplier = 1;
 
         if Some(pos) == double_letter_tile {
@@ -36,7 +36,7 @@ fn score_solution(
             multiplier = 3;
         }
 
-        score += LETTER_VALUES[ch as usize - 'a' as usize] as i32 * multiplier;
+        score += LETTER_VALUES[ch as usize] as i32 * multiplier;
     }
 
     if let Some(dw) = double_word_tile {
@@ -61,43 +61,45 @@ fn traverse(
 ) {
     let current_letter = context.board[pos as usize];
 
-    for (&path, child_node) in &node.children {
-        let cost = if current_letter == path { 0 } else { 1 };
-        if remaining_errors < cost {
-            continue;
-        }
-
-        context.word_accumulator.push(path as char);
-        context.breadcrumb_accumulator.push(pos);
-
-        if child_node.is_terminal {
-            context.solutions.push(Solution {
-                word: context.word_accumulator.clone(),
-                breadcrumbs: context.breadcrumb_accumulator.clone(),
-            });
-        }
-
-        context.bitmask |= 1 << pos;
-        for neighbor in neighbors_cache.get(pos as usize).unwrap() {
-            if (context.bitmask >> neighbor) & 1 == 0 {
-                traverse(
-                    child_node,
-                    *neighbor,
-                    remaining_errors - cost,
-                    context,
-                    neighbors_cache,
-                );
+    for (path, child_option) in node.children.iter().enumerate() {
+        if let Some(child_node) = child_option.as_ref() {
+            let cost = if current_letter == path as u8 { 0 } else { 1 };
+            if remaining_errors < cost {
+                continue;
             }
-        }
-        context.bitmask &= !(1 << pos);
 
-        context.word_accumulator.pop();
-        context.breadcrumb_accumulator.pop();
+            context.word_accumulator.push(path as u8);
+            context.breadcrumb_accumulator.push(pos);
+
+            if child_node.is_terminal {
+                context.solutions.push(Solution {
+                    word: context.word_accumulator.clone(),
+                    breadcrumbs: context.breadcrumb_accumulator.clone(),
+                });
+            }
+
+            context.bitmask |= 1 << pos;
+            for neighbor in neighbors_cache.get(pos as usize).unwrap() {
+                if (context.bitmask >> neighbor) & 1 == 0 {
+                    traverse(
+                        child_node,
+                        *neighbor,
+                        remaining_errors - cost,
+                        context,
+                        neighbors_cache,
+                    );
+                }
+            }
+            context.bitmask &= !(1 << pos);
+
+            context.word_accumulator.pop();
+            context.breadcrumb_accumulator.pop();
+        }
     }
 }
 
 fn solve_board(
-    board: &String,
+    board: &Vec<u8>,
     dl: Option<u8>,
     tl: Option<u8>,
     dw: Option<u8>,
@@ -106,10 +108,10 @@ fn solve_board(
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let mut context = TraverseContext {
-        board: &mut board.as_bytes().to_vec(),
+        board: board,
         bitmask: 0,
         solutions: &mut Vec::new(),
-        word_accumulator: &mut String::new(),
+        word_accumulator: &mut Vec::new(),
         breadcrumb_accumulator: &mut Vec::new(),
     };
 
@@ -126,7 +128,16 @@ fn solve_board(
 
     for solution in context.solutions.iter().take(5) {
         let score = score_solution(solution, dl, tl, dw);
-        println!("{:<10} {:?} {}", solution.word, solution.breadcrumbs, score);
+        println!(
+            "{:<10} {:?} {}",
+            solution
+                .word
+                .iter()
+                .map(|&byte| (byte + b'a') as char)
+                .collect::<String>(),
+            solution.breadcrumbs,
+            score
+        );
     }
     println!();
 }
@@ -161,7 +172,10 @@ fn main() {
         })
         .collect();
 
-    let board = String::from("tssoknodovampenstxegzwtyi");
+    let board = "tssoknodovampenstxegzwtyi"
+        .bytes()
+        .map(|byte| byte - b'a')
+        .collect();
     solve_board(&board, Some(14), None, None, 0, &trie, &neighbor_cache);
     solve_board(&board, Some(14), None, None, 1, &trie, &neighbor_cache);
     solve_board(&board, Some(14), None, None, 2, &trie, &neighbor_cache);

@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod trie;
 use std::{cmp::Reverse, collections::HashSet};
 use trie::{Trie, TrieNode};
@@ -39,10 +41,10 @@ fn score_solution(
         score += LETTER_VALUES[ch as usize] as u32 * multiplier;
     }
 
-    if let Some(dw) = double_word_tile {
-        if solution.breadcrumbs.iter().any(|&p| p as u8 == dw) {
-            score *= 2;
-        }
+    if let Some(dw) = double_word_tile
+        && solution.breadcrumbs.contains(&dw)
+    {
+        score *= 2;
     }
 
     if solution.word.len() >= 6 {
@@ -116,7 +118,7 @@ fn solve_board(
     };
 
     for pos in 0..25 {
-        traverse(&trie.root, pos, swaps, &mut context, &neighbors_cache);
+        traverse(&trie.root, pos, swaps, &mut context, neighbors_cache);
     }
 
     let mut seen = HashSet::new();

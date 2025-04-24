@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 pub struct TrieNode {
     pub children: [Option<Box<TrieNode>>; 26],
     pub is_terminal: bool,

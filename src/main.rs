@@ -1,8 +1,13 @@
 #![warn(clippy::pedantic)]
 
 mod trie;
+
 use std::{cmp::Reverse, collections::HashSet};
-use trie::{Trie, TrieNode};
+use trie::Trie;
+
+static LETTER_VALUES: [i8; 26] = [
+    1, 4, 5, 3, 1, 5, 3, 4, 1, 7, 3, 3, 4, 2, 1, 4, 8, 2, 2, 2, 4, 5, 5, 7, 4, 8,
+];
 
 struct Solution {
     word: Vec<u8>,
@@ -16,10 +21,6 @@ struct TraverseContext<'a> {
     word_accumulator: &'a mut Vec<u8>,
     breadcrumb_accumulator: &'a mut Vec<u8>,
 }
-
-static LETTER_VALUES: [i8; 26] = [
-    1, 4, 5, 3, 1, 5, 3, 4, 1, 7, 3, 3, 4, 2, 1, 4, 8, 2, 2, 2, 4, 5, 5, 7, 4, 8,
-];
 
 fn score_solution(
     solution: &Solution,
@@ -55,16 +56,18 @@ fn score_solution(
 }
 
 fn traverse(
-    node: &TrieNode,
+    trie: &Trie,
+    index: usize,
     pos: u8,
     remaining_errors: u8,
     context: &mut TraverseContext,
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let current_letter = context.board[pos as usize];
+    let current_node = &trie.nodes[index];
 
-    for (path, child_option) in node.children.iter().enumerate() {
-        if let Some(child_node) = child_option.as_ref() {
+    for (path, &child_option) in current_node.children.iter().enumerate() {
+        if let Some(child_index) = child_option {
             let cost = if current_letter == path as u8 { 0 } else { 1 };
             if remaining_errors < cost {
                 continue;
@@ -73,7 +76,7 @@ fn traverse(
             context.word_accumulator.push(path as u8);
             context.breadcrumb_accumulator.push(pos);
 
-            if child_node.is_terminal {
+            if trie.nodes[child_index].is_terminal {
                 context.solutions.push(Solution {
                     word: context.word_accumulator.clone(),
                     breadcrumbs: context.breadcrumb_accumulator.clone(),
@@ -84,7 +87,8 @@ fn traverse(
             for neighbor in neighbors_cache.get(pos as usize).unwrap() {
                 if context.bitmask & (1 << neighbor) == 0 {
                     traverse(
-                        child_node,
+                        trie,
+                        child_index,
                         *neighbor,
                         remaining_errors - cost,
                         context,
@@ -109,26 +113,27 @@ fn solve_board(
     trie: &Trie,
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
+    let mut solutions = Vec::new();
+    let mut word_accumulator = Vec::with_capacity(25);
+    let mut breadcrumb_accumulator = Vec::with_capacity(25);
+
     let mut context = TraverseContext {
         board,
         bitmask: 0,
-        solutions: &mut Vec::new(),
-        word_accumulator: &mut Vec::with_capacity(25),
-        breadcrumb_accumulator: &mut Vec::with_capacity(25),
+        solutions: &mut solutions,
+        word_accumulator: &mut word_accumulator,
+        breadcrumb_accumulator: &mut breadcrumb_accumulator,
     };
 
     for pos in 0..25 {
-        traverse(&trie.root, pos, swaps, &mut context, neighbors_cache);
+        traverse(trie, 0, pos, swaps, &mut context, neighbors_cache);
     }
 
     let mut seen = HashSet::new();
-    context.solutions.retain(|s| seen.insert(s.word.clone()));
+    solutions.retain(|s| seen.insert(s.word.clone()));
+    solutions.sort_by_key(|s| Reverse(score_solution(s, dl, tl, dw)));
 
-    context
-        .solutions
-        .sort_by_key(|s| Reverse(score_solution(s, dl, tl, dw)));
-
-    for solution in context.solutions.iter().take(5) {
+    for solution in solutions.iter().take(5) {
         let score = score_solution(solution, dl, tl, dw);
         println!(
             "{:<10} {:?} {}",
@@ -151,8 +156,6 @@ fn main() {
         .split_ascii_whitespace()
         .for_each(|word| trie.insert(word));
 
-    // this is a surprisingly expensive calculation because of the double loop, conditional, and bounds
-    // we'll precompute it just once
     let neighbor_cache: Vec<Vec<u8>> = (0..25)
         .map(|pos| {
             let x = pos % 5;
@@ -166,7 +169,7 @@ fn main() {
                     let nx: i8 = x + dx;
                     let ny: i8 = y + dy;
                     if (0..5).contains(&nx) && (0..5).contains(&ny) {
-                        neighbors.push((ny * 5 + nx) as u8);
+                        neighbors.push(u8::try_from(ny * 5 + nx).unwrap());
                     }
                 }
             }
@@ -178,6 +181,7 @@ fn main() {
         .bytes()
         .map(|byte| byte - b'a')
         .collect();
+
     solve_board(&board, Some(14), None, None, 0, &trie, &neighbor_cache);
     solve_board(&board, Some(14), None, None, 1, &trie, &neighbor_cache);
     solve_board(&board, Some(14), None, None, 2, &trie, &neighbor_cache);

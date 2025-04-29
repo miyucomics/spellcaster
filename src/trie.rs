@@ -1,36 +1,44 @@
 #![warn(clippy::pedantic)]
 
 pub struct TrieNode {
-    pub children: [Option<Box<TrieNode>>; 26],
+    pub children: [Option<usize>; 26],
     pub is_terminal: bool,
 }
 
 impl TrieNode {
     fn new() -> Self {
         Self {
-            children: Default::default(),
+            children: [None; 26],
             is_terminal: false,
         }
     }
 }
 
 pub struct Trie {
-    pub root: TrieNode,
+    pub nodes: Vec<TrieNode>,
 }
 
 impl Trie {
     pub fn new() -> Self {
         Self {
-            root: TrieNode::new(),
+            nodes: vec![TrieNode::new()],
         }
     }
 
     pub fn insert(&mut self, word: &str) {
-        let mut node = &mut self.root;
+        let mut cursor = 0;
         for &byte in word.as_bytes() {
-            let idx = (byte - b'a') as usize;
-            node = node.children[idx].get_or_insert_with(|| Box::new(TrieNode::new()));
+            let character = (byte - b'a') as usize;
+            if let Some(next) = self.nodes[cursor].children[character] {
+                cursor = next;
+            } else {
+                let new = self.nodes.len();
+                self.nodes.push(TrieNode::new());
+                self.nodes[cursor].children[character] = Some(new);
+                cursor = new;
+            }
         }
-        node.is_terminal = true;
+
+        self.nodes[cursor].is_terminal = true;
     }
 }

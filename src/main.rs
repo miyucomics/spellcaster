@@ -5,7 +5,7 @@ mod trie;
 use std::{cmp::Reverse, collections::HashSet};
 use trie::Trie;
 
-static LETTER_VALUES: [i8; 26] = [
+static LETTER_VALUES: [u32; 26] = [
     1, 4, 5, 3, 1, 5, 3, 4, 1, 7, 3, 3, 4, 2, 1, 4, 8, 2, 2, 2, 4, 5, 5, 7, 4, 8,
 ];
 
@@ -39,7 +39,7 @@ fn score_solution(
             multiplier = 3;
         }
 
-        score += LETTER_VALUES[ch as usize] as u32 * multiplier;
+        score += LETTER_VALUES[ch as usize] * multiplier;
     }
 
     if let Some(dw) = double_word_tile
@@ -57,46 +57,47 @@ fn score_solution(
 
 fn traverse(
     trie: &Trie,
-    index: usize,
-    pos: u8,
-    remaining_errors: u8,
+    trie_index: usize,
+    board_position: u8,
+    swaps_remaining: u8,
     context: &mut TraverseContext,
     neighbors_cache: &Vec<Vec<u8>>,
 ) {
-    let current_letter = context.board[pos as usize];
-    let current_node = &trie.nodes[index];
+    let current_letter = context.board[board_position as usize];
+    let current_node = &trie.nodes[trie_index];
 
-    for (path, &child_option) in current_node.children.iter().enumerate() {
-        if let Some(child_index) = child_option {
-            let cost = if current_letter == path as u8 { 0 } else { 1 };
-            if remaining_errors < cost {
+    for (letter_needed, &child_option) in current_node.children.iter().enumerate() {
+        let letter_needed = u8::try_from(letter_needed).unwrap();
+        if let Some(child_trie_index) = child_option {
+            let cost = u8::from(current_letter != letter_needed);
+            if swaps_remaining < cost {
                 continue;
             }
 
-            context.word_accumulator.push(path as u8);
-            context.breadcrumb_accumulator.push(pos);
+            context.word_accumulator.push(letter_needed);
+            context.breadcrumb_accumulator.push(board_position);
 
-            if trie.nodes[child_index].is_terminal {
+            if trie.nodes[child_trie_index as usize].is_terminal {
                 context.solutions.push(Solution {
                     word: context.word_accumulator.clone(),
                     breadcrumbs: context.breadcrumb_accumulator.clone(),
                 });
             }
 
-            context.bitmask |= 1 << pos;
-            for neighbor in neighbors_cache.get(pos as usize).unwrap() {
+            context.bitmask |= 1 << board_position;
+            for neighbor in neighbors_cache.get(board_position as usize).unwrap() {
                 if context.bitmask & (1 << neighbor) == 0 {
                     traverse(
                         trie,
-                        child_index,
+                        child_trie_index as usize,
                         *neighbor,
-                        remaining_errors - cost,
+                        swaps_remaining - cost,
                         context,
                         neighbors_cache,
                     );
                 }
             }
-            context.bitmask &= !(1 << pos);
+            context.bitmask &= !(1 << board_position);
 
             context.word_accumulator.pop();
             context.breadcrumb_accumulator.pop();
@@ -133,17 +134,16 @@ fn solve_board(
     solutions.retain(|s| seen.insert(s.word.clone()));
     solutions.sort_by_key(|s| Reverse(score_solution(s, dl, tl, dw)));
 
-    for solution in solutions.iter().take(5) {
+    for solution in solutions.iter().take(10) {
         let score = score_solution(solution, dl, tl, dw);
         println!(
-            "{:<10} {:?} {}",
+            "{:<13} {score:<5} {:?}",
             solution
                 .word
                 .iter()
                 .map(|&byte| (byte + b'a') as char)
                 .collect::<String>(),
             solution.breadcrumbs,
-            score
         );
     }
     println!();
@@ -160,6 +160,7 @@ fn main() {
         .map(|pos| {
             let x = pos % 5;
             let y = pos / 5;
+
             let mut neighbors = Vec::new();
             for dx in -1..=1 {
                 for dy in -1..=1 {

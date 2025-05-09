@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 
 pub struct TrieNode {
-    pub children: [Option<usize>; 26],
+    pub children: [Option<u32>; 26],
     pub is_terminal: bool,
 }
 
@@ -30,11 +30,11 @@ impl Trie {
         for &byte in word.as_bytes() {
             let character = (byte - b'a') as usize;
             if let Some(next) = self.nodes[cursor].children[character] {
-                cursor = next;
+                cursor = next as usize;
             } else {
                 let new = self.nodes.len();
                 self.nodes.push(TrieNode::new());
-                self.nodes[cursor].children[character] = Some(new);
+                self.nodes[cursor].children[character] = Some(u32::try_from(new).unwrap());
                 cursor = new;
             }
         }

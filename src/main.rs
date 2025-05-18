@@ -15,7 +15,10 @@ struct Solution {
 }
 
 struct TraverseContext<'a> {
+    trie: &'a Trie,
     board: &'a Vec<u8>,
+    neighbors: &'a Vec<Vec<u8>>,
+
     bitmask: u32,
     solutions: &'a mut Vec<Solution>,
     word_accumulator: &'a mut Vec<u8>,
@@ -56,15 +59,13 @@ fn score_solution(
 }
 
 fn traverse(
-    trie: &Trie,
     trie_index: usize,
     board_position: u8,
     swaps_remaining: u8,
     context: &mut TraverseContext,
-    neighbors_cache: &Vec<Vec<u8>>,
 ) {
     let current_letter = context.board[board_position as usize];
-    let current_node = &trie.nodes[trie_index];
+    let current_node = &context.trie.nodes[trie_index];
 
     for (letter_needed, &child_option) in current_node.children.iter().enumerate() {
         let letter_needed = u8::try_from(letter_needed).unwrap();
@@ -77,7 +78,7 @@ fn traverse(
             context.word_accumulator.push(letter_needed);
             context.breadcrumb_accumulator.push(board_position);
 
-            if trie.nodes[child_trie_index as usize].is_terminal {
+            if context.trie.nodes[child_trie_index as usize].is_terminal {
                 context.solutions.push(Solution {
                     word: context.word_accumulator.clone(),
                     breadcrumbs: context.breadcrumb_accumulator.clone(),
@@ -85,15 +86,13 @@ fn traverse(
             }
 
             context.bitmask |= 1 << board_position;
-            for neighbor in neighbors_cache.get(board_position as usize).unwrap() {
+            for neighbor in context.neighbors.get(board_position as usize).unwrap() {
                 if context.bitmask & (1 << neighbor) == 0 {
                     traverse(
-                        trie,
                         child_trie_index as usize,
                         *neighbor,
                         swaps_remaining - cost,
                         context,
-                        neighbors_cache,
                     );
                 }
             }
@@ -112,14 +111,16 @@ fn solve_board(
     dw: Option<u8>,
     swaps: u8,
     trie: &Trie,
-    neighbors_cache: &Vec<Vec<u8>>,
+    neighbors: &Vec<Vec<u8>>,
 ) {
     let mut solutions = Vec::new();
     let mut word_accumulator = Vec::with_capacity(25);
     let mut breadcrumb_accumulator = Vec::with_capacity(25);
 
     let mut context = TraverseContext {
+        trie,
         board,
+        neighbors,
         bitmask: 0,
         solutions: &mut solutions,
         word_accumulator: &mut word_accumulator,
@@ -127,7 +128,7 @@ fn solve_board(
     };
 
     for pos in 0..25 {
-        traverse(trie, 0, pos, swaps, &mut context, neighbors_cache);
+        traverse(0, pos, swaps, &mut context);
     }
 
     let mut seen = HashSet::new();
